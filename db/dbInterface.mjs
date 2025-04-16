@@ -1,7 +1,8 @@
 import * as dbJson from './dbJson.mjs';
 import * as dbMemory from './dbMemory.mjs';
+import * as dbMongo from './dbMongo.mjs';
 
-const dbSystem = dbJson;
+const dbSystem = dbMongo;
 
 export async function loadAll(resource) {
     return await dbSystem.loadAll(resource);

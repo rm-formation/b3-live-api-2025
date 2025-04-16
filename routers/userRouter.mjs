@@ -2,6 +2,8 @@ import { Router } from "express";
 import { loadAll, loadOne, saveOne } from "../db/dbInterface.mjs";
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import authMiddleware from "../middlewares/auth.mjs";
+import envVars from "../envVars.mjs";
 
 const userRouter = Router();
 
@@ -10,9 +12,12 @@ function hashPassword(password, salt) {
         salt = crypto.randomBytes(32).toString('hex');
     }
     const hashedPassword = (crypto.scryptSync(password, salt, 64)).toString('hex');
-    console.log({password, salt, hashedPassword});
     return { hashedPassword, salt };
 }
+
+userRouter.get('/checkConnection', authMiddleware, async (req, res) => {
+    res.send();
+});
 
 userRouter.post('/signup', async (req, res) => {
     const user = req.body;
@@ -31,8 +36,10 @@ userRouter.post('/signup', async (req, res) => {
 });
 
 userRouter.post('/signin', async (req, res) => {
+    console.log("signin");
     const { pseudo, password } = req.body;
     const users = await loadAll('user');
+    console.log("users", users);
     const userInDB = users.find(item => item.pseudo === pseudo);
     if (!userInDB) {
         res.statusCode = 400;
@@ -43,8 +50,13 @@ userRouter.post('/signin', async (req, res) => {
     if (inputPasswordHash === hashedPasswordInDB) {
         const token = jwt.sign({
             userId: userInDB.id
-        }, 'secret', { expiresIn: '1h' });
-        res.send(token);
+        }, envVars.secretJWT, { expiresIn: '1h' });
+        res.cookie('auth', token, {
+            secure: true,
+            httpOnly: true
+        });
+        // res.setHeader('Set-Cookie', `auth=${token}; Path=/`);
+        res.send();
     } else {
         res.statusCode = 401;
         res.send('Authentication failed');
@@ -52,7 +64,8 @@ userRouter.post('/signin', async (req, res) => {
 });
 
 userRouter.post('/signout', (req, res) => {
-
+    res.cookie('auth', '');
+    res.send();
 });
 
 export default userRouter;
